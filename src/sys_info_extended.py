@@ -156,6 +156,10 @@ def get_ipv4_address(interface_name=None):
 
 def get_net_addr(self, devide):
     ip = get_ipv4_address('wlan0')
+    if ip == '':
+        # fallback to eth0 in case WLAN0 is not connected
+        # TODO: switch every few seconds if both are connected?
+        ip = get_ipv4_address('eth0')
     return f'IP:{ip:>15}'
 
 
