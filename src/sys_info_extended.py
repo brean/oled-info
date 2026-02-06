@@ -111,7 +111,7 @@ def ros_id():
     if 'ROS_DOMAIN_ID' in os.environ:
         return os.environ['ROS_DOMAIN_ID']
     else:
-        return None
+        return '0'
 
 
 def _find_single_ipv4_address(addrs):
@@ -163,6 +163,8 @@ def get_net_addr(devices=None):
         if ip != '':
             # we only return the first device we find
             return f'IP{ip:>15}'
+    # No ip device (yet)
+    return ''
 
 
 def format_percent(percent):
@@ -368,6 +370,8 @@ class Display:
             str(font_path), self.font_size_full)
 
     def draw_text(self, draw, margin_x, line_num, text):
+        if not text:
+            return
         draw.text((
             margin_x,
             self.margin_y_line[line_num]),
