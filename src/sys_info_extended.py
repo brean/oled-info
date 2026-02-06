@@ -154,13 +154,15 @@ def get_ipv4_address(interface_name=None):
         return ''
 
 
-def get_net_addr(self, devide):
-    ip = get_ipv4_address('wlan0')
-    if ip == '':
-        # fallback to eth0 in case WLAN0 is not connected
-        # TODO: switch every few seconds if both are connected?
-        ip = get_ipv4_address('eth0')
-    return f'IP:{ip:>15}'
+def get_net_addr(devices=None):
+    if not devices:
+        devices = ['wlan0', 'eth0']
+    for dev in devices:
+        ip = get_ipv4_address(dev)
+        # TODO: switch every few seconds if all devices are connected?
+        if ip != '':
+            # we only return the first device we find
+            return f'IP:{ip:>15}'
 
 
 def format_percent(percent):
