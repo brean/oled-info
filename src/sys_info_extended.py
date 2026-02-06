@@ -162,11 +162,11 @@ def get_net_addr(devices=None):
         # TODO: switch every few seconds if all devices are connected?
         if ip != '':
             # we only return the first device we find
-            return f'IP:{ip:>15}'
+            return f'IP{ip:>15}'
 
 
 def format_percent(percent):
-    return f'{percent:5.1f}%'
+    return f' {percent:5.1f}%'
 
 
 def throttle_emojis(throttle_data):
@@ -291,7 +291,7 @@ class BatteryInfoNode(Node):
             }, {
                 'type': 'percentage',
                 'text': 'BAT',
-                'unit': ' %',
+                'unit': '%',
                 'value': self.battery_percentage
             },
             wifi
