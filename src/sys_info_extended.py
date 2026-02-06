@@ -18,6 +18,7 @@ from pathlib import Path
 # ROS 2 for battery
 import rclpy
 from rclpy.node import Node
+
 from sensor_msgs.msg import BatteryState
 
 import subprocess
@@ -88,7 +89,7 @@ def get_mem():
 
 
 def get_disk_usage():
-    usage = psutil.disk_usage("/")
+    usage = psutil.disk_usage('/')
     return usage.used / usage.total * 100
 
 
@@ -125,14 +126,14 @@ def get_ipv4_address(interface_name=None):
     if isinstance(interface_name, str) and interface_name in if_addrs:
         addrs = if_addrs.get(interface_name)
         address = _find_single_ipv4_address(addrs)
-        return address if isinstance(address, str) else ""
+        return address if isinstance(address, str) else ''
     else:
         if_stats = psutil.net_if_stats()
         # remove loopback
         if_stats_filtered = {
             key: if_stats[key]
             for key, stat in if_stats.items()
-            if "loopback" not in stat.flags
+            if 'loopback' not in stat.flags
         }
         # sort interfaces by
         # 1. Up/Down
@@ -150,11 +151,16 @@ def get_ipv4_address(interface_name=None):
             if isinstance(address, str):
                 return address
 
-        return ""
+        return ''
+
+
+def get_net_addr(self, devide):
+    ip = get_ipv4_address('wlan0')
+    return f'IP:{ip:>15}'
 
 
 def format_percent(percent):
-    return "%5.1f" % (percent)
+    return f'{percent:5.1f}%'
 
 
 def throttle_emojis(throttle_data):
@@ -192,14 +198,31 @@ def get_wifi_strength():
         return float(wifi_strength)
 
 
-def _get_wifi_name():
+def _get_wifi_mode(device='wlan0'):
     try:
-        ap_txt = subprocess.check_output(['iwgetid', '-r'])
+        ap_txt = subprocess.check_output(['iwgetid', '-m', device])
         if not ap_txt:
             return None
         ap_txt = ap_txt.decode('utf-8')
         if ap_txt:
-            return ap_txt.strip()
+            txt = ap_txt.strip()
+            if txt.endswith('Managed'):
+                return 'managed'
+            elif txt.endswith('Master'):
+                # Access Point mode
+                return 'master'
+    except subprocess.CalledProcessError:
+        return None
+
+
+def _get_wifi_name(device='wlan0'):
+    try:
+        ap_txt = subprocess.check_output(['iw', 'dev', device, 'info'])
+        if not ap_txt:
+            return None
+        m = re.search('ssid (?P<ssid>.*)', ap_txt.decode('utf-8'))
+        if m:
+            return m.group('ssid')
     except subprocess.CalledProcessError:
         return None
 
@@ -234,7 +257,9 @@ class BatteryInfoNode(Node):
     def update_stats(self):
         # TODO: configure this using a YAML-file and/or a ROS 2 service :-)
         # TODO: add a second ROS2-service that sends only the data.
-        ip = get_ipv4_address('wlan0')
+        # TODO: switch between different network devices if multiple devices
+        # have a wifi-connection
+
         wifi_strength = get_wifi_strength()
         wifi = (
             {
@@ -253,12 +278,10 @@ class BatteryInfoNode(Node):
         data = [
             {
                 'type': 'text',
-                'value': f'IP:{ip}'
+                'value': get_net_addr()
             }, {
-                'type': 'percentage',
-                'text': 'TEMP',
-                'unit': "'C",
-                'value': get_temp(self.vcgm)
+                'type': 'text',
+                'value': get_wifi_name()
             }, {
                 'type': 'percentage',
                 'text': 'BAT',
@@ -288,6 +311,11 @@ class BatteryInfoNode(Node):
         #     'type': 'text',
         #     'value': f'AP: {get_wifi_name()}'
         # }
+        # Temperature:
+        # 'type': 'percentage',
+        # 'text': 'TEMP',
+        # 'unit': "'C",
+        # 'value': get_temp(self.vcgm)
         # memory usage:
         # {
         #     'type': 'percentage',
@@ -326,7 +354,7 @@ class Display:
         self.lines = int(self.display_height / self.font_size)
 
         self.device = get_device()
-        font_path = BASE_PATH.joinpath("fonts", "DejaVuSansMono.ttf")
+        font_path = BASE_PATH.joinpath('fonts', 'DejaVuSansMono.ttf')
         if not font_path.exists():
             print(f'WARNING: font {font_path} not fount!')
         self.font_default = ImageFont.truetype(str(font_path), self.font_size)
@@ -338,7 +366,7 @@ class Display:
             margin_x,
             self.margin_y_line[line_num]),
             text,
-            font=self.font_default, fill="white")
+            font=self.font_default, fill='white')
 
     def draw_bar(self, draw, line_num, percent):
         if percent >= 100:
@@ -349,13 +377,13 @@ class Display:
             top_left_y,
             self.margin_x_bar + self.bar_width,
             top_left_y + self.bar_height),
-            outline="white")
+            outline='white')
         draw.rectangle((
             self.margin_x_bar,
             top_left_y,
             self.margin_x_bar + self.bar_width * percent / 100,
             top_left_y + self.bar_height),
-            fill="white")
+            fill='white')
 
     def draw_bar_full(self, draw, line_num):
         top_left_y = self.margin_y_line[line_num] + self.bar_margin_top
@@ -364,10 +392,10 @@ class Display:
             top_left_y,
             self.margin_x_bar + self.bar_width_full,
             top_left_y + self.bar_height),
-            fill="white")
+            fill='white')
         draw.text(
-            (65, top_left_y - 2), "100 %",
-            font=self.font_full, fill="black")
+            (65, top_left_y - 2), '100 %',
+            font=self.font_full, fill='black')
 
     def display_stats(self, data):
         with canvas(self.device) as draw:
@@ -392,7 +420,7 @@ class Display:
                         val = format_percent(value)
                     unit = line['unit']
                     self.draw_text(
-                        draw, self.margin_x_figure, line_num, f"{val}{unit}")
+                        draw, self.margin_x_figure, line_num, f'{val}{unit}')
                 elif _type == 'text':
                     value = line['value']
                     left = line['left'] if 'left' in line else 0
@@ -406,9 +434,6 @@ def main(args=None):
 
     rclpy.spin(node)
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
     node.destroy_node()
     rclpy.shutdown()
 
