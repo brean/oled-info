@@ -258,6 +258,7 @@ class BatteryInfoNode(Node):
             'battery_state',
             self.listener_callback,
             10)
+        self.update_stats()
 
     def listener_callback(self, msg):
         self.battery_percentage = msg.percentage
