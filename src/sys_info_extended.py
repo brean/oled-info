@@ -12,9 +12,6 @@ import os
 # datetime to display uptime human-readable
 from datetime import datetime
 
-# Path to get fonts
-from pathlib import Path
-
 # ROS 2 for battery
 import rclpy
 from rclpy.node import Node
@@ -30,12 +27,7 @@ try:
 except ModuleNotFoundError:
     VCGENCMD = False
 
-# get devices from luna library and print display information
-from demo_opts import get_device
-from luma.core.render import canvas
-
-# ImageFont for drawing on device
-from PIL import ImageFont
+from luma_display import Display
 
 # psutil to get system information (CPU, memory, temperature, ...)
 import psutil
@@ -53,9 +45,6 @@ UNDERVOLTAGE_OCCURED = '16'
 ARM_FREQ_CAPP_OCCURED = '17'
 THROTTLING_OCCURED = '18'
 SOFT_TEMPERATURE_LIMIT_OCCURED = '19'
-
-
-BASE_PATH = Path(__file__).resolve().parent
 
 
 def get_temp_psutil():
@@ -165,10 +154,6 @@ def get_net_addr(devices=None):
             return f'IP{ip:>15}'
     # No ip device (yet)
     return ''
-
-
-def format_percent(percent):
-    return f' {percent:5.1f}%'
 
 
 def throttle_emojis(throttle_data):
@@ -345,97 +330,6 @@ class BatteryInfoNode(Node):
         #     'value': f'UP: {get_uptime()}'
         # }
         self.display.display_stats(data)
-
-
-class Display:
-    def __init__(self):
-        self.font_size = 12
-        self.font_size_full = 10
-        self.margin_y_line = [0, 13, 25, 38, 51]
-        self.margin_x_figure = 78
-        self.margin_x_bar = 31
-        self.bar_width = 52
-        self.bar_width_full = 95
-        self.bar_height = 8
-        self.bar_margin_top = 3
-        self.display_height = 64
-
-        self.lines = int(self.display_height / self.font_size)
-
-        self.device = get_device()
-        font_path = BASE_PATH.joinpath('fonts', 'DejaVuSansMono.ttf')
-        if not font_path.exists():
-            print(f'WARNING: font {font_path} not fount!')
-        self.font_default = ImageFont.truetype(str(font_path), self.font_size)
-        self.font_full = ImageFont.truetype(
-            str(font_path), self.font_size_full)
-
-    def draw_text(self, draw, margin_x, line_num, text):
-        if not text:
-            return
-        draw.text((
-            margin_x,
-            self.margin_y_line[line_num]),
-            text,
-            font=self.font_default, fill='white')
-
-    def draw_bar(self, draw, line_num, percent):
-        if percent >= 100:
-            return self.draw_bar_full(draw, line_num)
-        top_left_y = self.margin_y_line[line_num] + self.bar_margin_top
-        draw.rectangle((
-            self.margin_x_bar,
-            top_left_y,
-            self.margin_x_bar + self.bar_width,
-            top_left_y + self.bar_height),
-            outline='white')
-        draw.rectangle((
-            self.margin_x_bar,
-            top_left_y,
-            self.margin_x_bar + self.bar_width * percent / 100,
-            top_left_y + self.bar_height),
-            fill='white')
-
-    def draw_bar_full(self, draw, line_num):
-        top_left_y = self.margin_y_line[line_num] + self.bar_margin_top
-        draw.rectangle((
-            self.margin_x_bar,
-            top_left_y,
-            self.margin_x_bar + self.bar_width_full,
-            top_left_y + self.bar_height),
-            fill='white')
-        draw.text(
-            (65, top_left_y - 2), '100 %',
-            font=self.font_full, fill='black')
-
-    def display_stats(self, data):
-        with canvas(self.device) as draw:
-            for num, line in enumerate(data):
-                if 'type' not in line:
-                    continue
-                _type = line['type']
-                value = line['value']
-                line_num = line['line'] if 'line' in line else num
-                if _type in ['percentage', 'int']:
-                    self.draw_text(draw, 0, line_num, line['text'])
-
-                    percentage_value = value
-                    if 'max' in line:
-                        percentage_value = value / line['max'] * 100
-                    self.draw_bar(draw, line_num, percentage_value)
-
-                    if _type == 'int':
-                        val = f'  {int(value)}' if value >= 10\
-                            else f'   {int(value)}'
-                    else:
-                        val = format_percent(value)
-                    unit = line['unit']
-                    self.draw_text(
-                        draw, self.margin_x_figure, line_num, f'{val}{unit}')
-                elif _type == 'text':
-                    value = line['value']
-                    left = line['left'] if 'left' in line else 0
-                    self.draw_text(draw, left, line_num, value)
 
 
 def main(args=None):
