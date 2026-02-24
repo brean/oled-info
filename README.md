@@ -1,5 +1,11 @@
-# Docker OLED Display setup (for raspberry pi that is used in robotics or as small server)
-Docker ROS 2 humble environment for your Rasbperry PI to show some information that are interesting in robotics.
+# Show information on the 0.96 inch OLED Display
+Mainly used for raspberry pi that is used in robotics or to display information for a small server.
+
+Can be set up using Docker or venv.
+
+The shown information are either provided from local sources or by the [sys_info](https://github.com/Fleet-Control/sys-info/) ROS2 nodes
+
+Docker ROS 2 humble/jazzy environment for your Rasbperry PI to show some information that are interesting in robotics.
 You can configure it to show different values, the default is:
 
  - WiFi IP-Address (using `psutil`)
